@@ -8,13 +8,11 @@ import os
 import re
 
 def sanitize_filename(name):
-    """Convert sheet name to valid filename"""
     sanitized = re.sub(r'[<>:"/\\|?*]', '_', str(name))
     sanitized = re.sub(r'\s+', '_', sanitized.strip())
     return sanitized
 
 def escape_latex(text):
-    """Escape special LaTeX characters and handle bullet points"""
     if not text:
         return ""
 
@@ -34,7 +32,6 @@ def escape_latex(text):
             .replace("^", "\\textasciicircum{}")
         )
 
-    # Special handling for bullet points
     if "•" in text_str:
         text_str = text_str.replace("\n", " ")
         items = [item.strip() for item in text_str.split("•") if item.strip()]
@@ -47,20 +44,19 @@ def col_letter_to_index(letter):
     return ord(letter.upper()) - ord("A")
 
 def process_worksheet(ws, sheet_name):
-    """Process a single worksheet and generate LaTeX table"""
     excluded_indices = set(col_letter_to_index(c) for c in EXCLUDED_COLUMNS)
 
     header_title = escape_latex(ws["A1"].value)
-    header_min_detail = escape_latex(ws["A2"].value)
-    header_excluded = escape_latex(ws["B2"].value)
-    header_model_content = escape_latex(ws["C2"].value)
-
-    subheader_cells = ["C3", "D3", "E3", "F3", "G3", "H3", "I3"]
-    subheaders_raw = [escape_latex(ws[c].value) for c in subheader_cells]
-
+    
     all_letters = ["A", "B", "C", "D", "E", "F", "G", "H", "I"]
     final_letters = [l for l in all_letters if l not in EXCLUDED_COLUMNS]
     final_indices = [col_letter_to_index(l) for l in final_letters]
+
+    headers = []
+    for letter in final_letters:
+        cell_ref = f"{letter}2"
+        header_value = ws[cell_ref].value
+        headers.append(escape_latex(header_value))
 
     tabular_parts = []
     for l in final_letters:
@@ -70,55 +66,23 @@ def process_worksheet(ws, sheet_name):
             tabular_parts.append(COLUMN_WIDTHS["C"])
     tabular_spec = "|" + "|".join(tabular_parts) + "|"
 
-    # Build header rows with multirow structure
-    row2_cells = []
-    if "A" not in EXCLUDED_COLUMNS:
-        row2_cells.append("")  # Empty for multirow
-    if "B" not in EXCLUDED_COLUMNS:
-        row2_cells.append("")  # Empty for multirow
-    span = sum(1 for l in all_letters[2:] if l not in EXCLUDED_COLUMNS)
-    if span > 0:
-        row2_cells.append(f"\\multicolumn{{{span}}}{{|c|}}{{\\textcolor{{white}}{{\\textbf{{{header_model_content}}}}}}}")
-
-    row3_cells = []
-    # Multirow commands with negative arguments for bottom row
-    if "A" not in EXCLUDED_COLUMNS:
-        row3_cells.append(f"\\multirow{{-2}}{{*}}{{\\textcolor{{white}}{{\\textbf{{{header_min_detail}}}}}}}")
-    if "B" not in EXCLUDED_COLUMNS:
-        row3_cells.append(f"\\multirow{{-2}}{{*}}{{\\textcolor{{white}}{{\\textbf{{{header_excluded}}}}}}}")
-    for i, l in enumerate(all_letters[2:], start=2):
-        if l not in EXCLUDED_COLUMNS:
-            row3_cells.append(f"\\textcolor{{white}}{{{subheaders_raw[i-2]}}}")
-
-    # Partial horizontal line specification (skip multirow columns)
-    cline_start = 1
-    if "A" not in EXCLUDED_COLUMNS:
-        cline_start += 1
-    if "B" not in EXCLUDED_COLUMNS:
-        cline_start += 1
-    cline_end = len(final_letters)
-    cline_spec = f"\\cline{{{cline_start}-{cline_end}}}"
-
     color_definition = "% Add these packages to your LaTeX document preamble:\n% \\usepackage{array}\n% \\usepackage{xcolor}\n% \\usepackage{colortbl}\n% \\usepackage{longtable}\n\\definecolor{headercolor}{HTML}{00ACD2}\n"
 
+    # Simplified header structure - no multirow
     header_latex = f"""
 \\scriptsize
 \\begin{{longtable}}{{{tabular_spec}}}
 \\hline
 \\rowcolor{{headercolor}}\\multicolumn{{{len(final_letters)}}}{{|c|}}{{\\parbox[c][4ex][c]{{\\linewidth}}{{\\centering\\textcolor{{white}}{{\\textbf{{\\normalsize{{{header_title}}}}}}}}}}} \\\\
 \\hline
-\\rowcolor{{headercolor}}{" & ".join(row2_cells)} \\\\
-{cline_spec}
-\\rowcolor{{headercolor}}{" & ".join(row3_cells)} \\\\
+\\rowcolor{{headercolor}}{" & ".join([f"\\textcolor{{white}}{{\\textbf{{{header}}}}}" for header in headers])} \\\\
 \\hline
 \\endfirsthead
 
 \\hline
 \\rowcolor{{headercolor}}\\multicolumn{{{len(final_letters)}}}{{|c|}}{{\\parbox[c][4ex][c]{{\\linewidth}}{{\\centering\\textcolor{{white}}{{\\textbf{{\\normalsize{{{header_title}}} (continued)}}}}}}}} \\\\
 \\hline
-\\rowcolor{{headercolor}}{" & ".join(row2_cells)} \\\\
-{cline_spec}
-\\rowcolor{{headercolor}}{" & ".join(row3_cells)} \\\\
+\\rowcolor{{headercolor}}{" & ".join([f"\\textcolor{{white}}{{\\textbf{{{header}}}}}" for header in headers])} \\\\
 \\hline
 \\endhead
 
@@ -132,7 +96,7 @@ def process_worksheet(ws, sheet_name):
 """
 
     body_rows = []
-    for row in ws.iter_rows(min_row=4, values_only=True):
+    for row in ws.iter_rows(min_row=3, values_only=True):
         original_filtered = [row[i] if i < len(row) else None for i in final_indices]
         row_has_content = any(
             cell is not None and str(cell).strip() 
@@ -165,7 +129,6 @@ def process_worksheet(ws, sheet_name):
     return color_definition + "\n" + latex_table
 
 def create_zip_file(latex_files):
-    """Create a ZIP file containing all LaTeX files"""
     zip_buffer = io.BytesIO()
     with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
         for filename, content in latex_files.items():
@@ -308,7 +271,6 @@ def main():
                             \\usepackage{xcolor}
                             \\usepackage{colortbl}
                             \\usepackage{longtable}
-                            \\usepackage{multirow}
                             ```
                             
                             2. **Include the .tex file** in your document:
