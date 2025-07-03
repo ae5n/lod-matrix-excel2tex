@@ -105,7 +105,7 @@ def process_worksheet(ws, sheet_name):
 \\scriptsize
 \\begin{{longtable}}{{{tabular_spec}}}
 \\hline
-\\rowcolor{{headercolor}}\\multicolumn{{{len(final_letters)}}}{{|c|}}{{\\textcolor{{white}}{{\\textbf{{\\rule{{0pt}}{{3ex}}{{{header_title}}}\\rule{{0pt}}{{2ex}}}}}}}} \\\\
+\\rowcolor{{headercolor}}\\multicolumn{{{len(final_letters)}}}{{|c|}}{{\\parbox[c][4ex][c]{{\\linewidth}}{{\\centering\\textcolor{{white}}{{\\textbf{{\\normalsize{{{header_title}}}}}}}}}}} \\\\
 \\hline
 \\rowcolor{{headercolor}}{" & ".join(row2_cells)} \\\\
 {cline_spec}
@@ -114,7 +114,7 @@ def process_worksheet(ws, sheet_name):
 \\endfirsthead
 
 \\hline
-\\rowcolor{{headercolor}}\\multicolumn{{{len(final_letters)}}}{{|c|}}{{\\textcolor{{white}}{{\\textbf{{\\rule{{0pt}}{{3ex}}{{{header_title}}} (continued)\\rule{{0pt}}{{2ex}}}}}}}} \\\\
+\\rowcolor{{headercolor}}\\multicolumn{{{len(final_letters)}}}{{|c|}}{{\\parbox[c][4ex][c]{{\\linewidth}}{{\\centering\\textcolor{{white}}{{\\textbf{{\\normalsize{{{header_title}}} (continued)}}}}}}}} \\\\
 \\hline
 \\rowcolor{{headercolor}}{" & ".join(row2_cells)} \\\\
 {cline_spec}
