@@ -131,16 +131,22 @@ def process_worksheet(ws, sheet_name):
 \\endlastfoot
 """
 
-    # Process data rows with conditional coloring for category headers
     body_rows = []
     for row in ws.iter_rows(min_row=4, values_only=True):
+        original_filtered = [row[i] if i < len(row) else None for i in final_indices]
+        row_has_content = any(
+            cell is not None and str(cell).strip() 
+            for cell in original_filtered
+        )
+        
+        if not row_has_content:
+            continue
+            
         escaped = [escape_latex(cell) for cell in row]
         filtered = [escaped[i] for i in final_indices]
         
-        # Apply blue color to rows with content only in first column (category headers)
         has_content_only_in_A = False
         if "A" not in EXCLUDED_COLUMNS:
-            original_filtered = [row[i] if i < len(row) else None for i in final_indices]
             first_col_has_content = original_filtered[0] is not None and str(original_filtered[0]).strip()
             other_cols_empty = all(
                 not (cell is not None and str(cell).strip()) 
